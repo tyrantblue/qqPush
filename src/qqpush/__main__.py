@@ -38,6 +38,27 @@ HELP_TEXT = """qqpush —— 轻量的 QQ 群消息转发服务
 """
 
 
+WEAK_TOKENS = {"change-me-please", "changeme", "test", "test-token", "123456", "password"}
+
+
+def _check_push_token(cfg: Config) -> None:
+    """启动时检查推送密钥强度：公网可访问又用弱口令，等于把发消息权限交出去."""
+    token = cfg.push_token
+    if not token:
+        LOG.warning(
+            "未设置 QQPUSH_TOKEN：任何能访问 %s:%s 的人都可以向你的群发消息。"
+            "公网部署请务必设置（例如 openssl rand -hex 16）",
+            cfg.host,
+            cfg.port,
+        )
+        return
+    if token.strip().lower() in WEAK_TOKENS or len(token) < 12:
+        LOG.warning(
+            "QQPUSH_TOKEN 过弱（示例值或长度 <12）：建议改成随机串，"
+            "例如 `openssl rand -hex 16`，然后重启服务"
+        )
+
+
 async def run(cfg: Config) -> None:
     app = build_app(cfg)
     groups = app.groups
@@ -51,6 +72,8 @@ async def run(cfg: Config) -> None:
     for srv in servers:
         host, port = srv.server_address[0], srv.server_address[1]
         LOG.info("HTTP 监听 http://%s:%s", host, port)
+
+    _check_push_token(cfg)
 
     if cfg.is_official:
         LOG.info(

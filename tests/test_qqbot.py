@@ -594,3 +594,36 @@ class TestOfficialProbe:
         probe = await service.probe()
         assert probe["qqbot"] == "ok"
         assert probe["channel"] == "official"
+
+
+class TestTokenGuard:
+    """启动护栏：弱口令/空口令要主动告警，避免公网裸奔."""
+
+    def test_warns_on_example_token(self, caplog):
+        from qqpush.__main__ import _check_push_token
+
+        cfg = Config(push_token="change-me-please", host="0.0.0.0", port=8088)
+        with caplog.at_level("WARNING"):
+            _check_push_token(cfg)
+        assert "过弱" in caplog.text
+
+    def test_warns_on_short_token(self, caplog):
+        from qqpush.__main__ import _check_push_token
+
+        with caplog.at_level("WARNING"):
+            _check_push_token(Config(push_token="abc123"))
+        assert "过弱" in caplog.text
+
+    def test_warns_when_token_missing(self, caplog):
+        from qqpush.__main__ import _check_push_token
+
+        with caplog.at_level("WARNING"):
+            _check_push_token(Config(push_token=""))
+        assert "未设置 QQPUSH_TOKEN" in caplog.text
+
+    def test_strong_token_is_silent(self, caplog):
+        from qqpush.__main__ import _check_push_token
+
+        with caplog.at_level("WARNING"):
+            _check_push_token(Config(push_token="18c457e2ff18e27b2a012cd09a8120bb"))
+        assert caplog.text == ""
