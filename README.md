@@ -230,7 +230,32 @@ docker logs napcat                       # 取 WebUI 登录 token
 
 ---
 
-### 5.1 用 systemd 常驻（推荐）
+### 5.1 用 Docker 常驻（推荐）
+
+```bash
+cp .env.example .env                      # 填 QQBOT_APPID / QQBOT_SECRET / QQPUSH_TOKEN
+cp data/groups.example.json data/groups.json
+ln -sf .env .env.deploy                   # 让 compose 读到 .env 里的凭据
+docker compose -f docker-compose.yml -f deploy/docker-compose.deploy.yml up -d --build
+```
+
+覆盖项 `deploy/docker-compose.deploy.yml` 做了三件事：把宿主机 `./data` 挂进容器
+（自动发现的 `group_openid` 直接落在你本地）、按 `QQPUSH_UID/QQPUSH_GID` 运行
+（避免绑定挂载没权限写）、只把健康端口绑到本机。
+
+```bash
+docker compose -f docker-compose.yml -f deploy/docker-compose.deploy.yml ps
+docker logs -f qqpush                     # 事件与投递日志
+curl http://127.0.0.1:8089/healthz        # 健康检查（仅本机可访问）
+```
+
+容器带 `restart: always`，开机自启。非 root 用户部署时把 uid/gid 传进去：
+
+```bash
+QQPUSH_UID=$(id -u) QQPUSH_GID=$(id -g) docker compose -f docker-compose.yml -f deploy/docker-compose.deploy.yml up -d
+```
+
+### 5.2 用 systemd 常驻（不用 Docker 时）
 
 ```bash
 sudo cp deploy/qqpush.service /etc/systemd/system/
