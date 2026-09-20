@@ -1,0 +1,24 @@
+[Unit]
+Description=qqpush QQ 群消息转发服务（官方 QQ 机器人通道）
+Documentation=file:///opt/qqbot/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/qqbot
+# .env 里放着 QQBOT_APPID / QQBOT_SECRET，用 EnvironmentFile 注入，不写进命令行
+EnvironmentFile=/opt/qqbot/.env
+Environment=PATH=/root/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=UV_CACHE_DIR=/opt/qqbot/.uv-cache
+ExecStart=/root/.local/bin/uv run --no-sync qqpush
+Restart=always
+RestartSec=5
+# 优雅退出（服务会先排空队列）
+KillSignal=SIGTERM
+TimeoutStopSec=20
+StandardOutput=append:/var/log/qqpush.log
+StandardError=append:/var/log/qqpush.log
+
+[Install]
+WantedBy=multi-user.target

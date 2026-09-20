@@ -1,0 +1,17 @@
+# 本机部署覆盖项：宿主机 ./data 目录 + 只暴露本机端口
+#
+# 用法：
+#   ln -sf .env .env.deploy          # 让 compose 读到 QQBOT_APPID 等变量
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.deploy.yml up -d --build
+#
+# 说明：
+#   - QQPUSH_GROUPS_FILE 指向 ./data/groups.json，容器把自动发现的 group_openid 写回宿主机
+#   - 容器默认以 uid 10001 运行，绑定挂载会没权限写；这里按 QQPUSH_UID/QQPUSH_GID 运行
+#     （root 部署时为 0:0；普通用户用 QQPUSH_UID=$(id -u) QQPUSH_GID=$(id -g)）
+services:
+  qqpush:
+    user: "${QQPUSH_UID:-0}:${QQPUSH_GID:-0}"
+    env_file:
+      - .env.deploy
+    volumes:
+      - ./data:/app/data

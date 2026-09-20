@@ -1,0 +1,72 @@
+# 推荐用法：官方 QQ 机器人通道（默认 QQPUSH_CHANNEL=official）
+#
+# 1) 准备配置：
+#    cp .env.example .env
+#    # 填 QQBOT_APPID / QQBOT_SECRET（开放平台 -> 开发设置）、QQPUSH_TOKEN
+#    cp data/groups.example.json data/groups.json   # 把群号改成你的目标群
+# 2) 启动（带上你自己的 uid/gid，保证能写 ./data）：
+#    QQPUSH_UID=$(id -u) QQPUSH_GID=$(id -g) docker compose up -d qqpush
+# 3) 让机器人进群后，在群里 @ 一下它（或运行 qqpush-discover）。
+#    服务会自动把 group_openid 写回 data/groups.json
+# 4) 验证：curl -H "X-Push-Token: <你的token>" http://127.0.0.1:8088/healthz
+#    看到 "channel": "official" 且 targets 里有目标群，就可以开始推送了
+#
+# 如果要用 NapCat / OneBot 通道：把 .env 里 QQPUSH_CHANNEL 改成 onebot，
+# 然后用下面的 profile 一起起 NapCat：
+#    NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker compose --profile onebot up -d
+#    浏览器打开 http://<宿主机IP>:6099/webui 登录 QQ，
+#    并在「网络配置」里添加 HTTP 服务器：端口 3000，Token 与 ONEBOT_TOKEN 一致
+
+services:
+  qqpush:
+    build: .
+    image: qqpush:latest
+    container_name: qqpush
+    restart: always
+    # 以宿主机当前用户运行，保证能把 group_openid / failed.ndjson 写进 ./data
+    # （不设置的话容器内是 uid 10001，绑定的 ./data 会没权限写）
+    user: "${QQPUSH_UID:-1000}:${QQPUSH_GID:-1000}"
+    environment:
+      HOME: /tmp
+      QQPUSH_HOST: 0.0.0.0
+      QQPUSH_PORT: "8088"
+      QQPUSH_HEALTH_PORT: "8089"
+      QQPUSH_TOKEN: ${QQPUSH_TOKEN:?请在 .env 里设置 QQPUSH_TOKEN}
+      QQPUSH_CHANNEL: ${QQPUSH_CHANNEL:-official}
+      # 官方机器人
+      QQBOT_APPID: ${QQBOT_APPID:-}
+      QQBOT_SECRET: ${QQBOT_SECRET:-}
+      QQBOT_LISTEN: ${QQBOT_LISTEN:-true}
+      QQBOT_MAX_CHARS: ${QQBOT_MAX_CHARS:-1000}
+      QQBOT_STRIP_URLS: ${QQBOT_STRIP_URLS:-false}
+      QQBOT_GROUP_PER_MINUTE: ${QQBOT_GROUP_PER_MINUTE:-18}
+      # OneBot（channel=onebot 时生效）
+      ONEBOT_BASE_URL: ${ONEBOT_BASE_URL:-http://napcat:3000}
+      ONEBOT_TOKEN: ${ONEBOT_TOKEN:-}
+      # 通用
+      QQPUSH_GROUPS_FILE: /app/data/groups.json
+      QQPUSH_FAILED_LOG: /app/data/failed.ndjson
+      QQPUSH_WORKERS: ${QQPUSH_WORKERS:-4}
+      QQPUSH_MARKDOWN: ${QQPUSH_MARKDOWN:-true}
+      QQPUSH_SEND_RATE_PER_SEC: ${QQPUSH_SEND_RATE_PER_SEC:-5}
+    ports:
+      - "${QQPUSH_PORT:-8088}:8088" # 业务推送接口
+      - "127.0.0.1:${QQPUSH_HEALTH_PORT:-8089}:8089" # 健康检查只绑本机
+    volumes:
+      - ./data:/app/data # groups.json 会被自动写入 group_openid
+
+  # 仅在 --profile onebot 时启动；用官方通道时不需要它
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    profiles: ["onebot"]
+    restart: always
+    environment:
+      - NAPCAT_UID=${NAPCAT_UID:-0}
+      - NAPCAT_GID=${NAPCAT_GID:-0}
+    ports:
+      - "6099:6099" # WebUI（登录 QQ、配置 OneBot）
+      - "3000:3000" # OneBot 11 HTTP 服务
+    volumes:
+      - ./napcat/config:/app/napcat/config
+      - ./ntqq:/app/.config/QQ

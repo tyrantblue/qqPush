@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+data/*.ndjson
+data/groups.json
+.ruff_cache/
+.pytest_cache/
+dist/
+*.egg-info/
+
+.uv-cache/
+.docker-cache/
+.env.deploy

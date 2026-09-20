@@ -1,0 +1,10 @@
+{
+  "//": "官方通道用 group_openids（收到群事件后自动写入）；OneBot 通道用 groups。按 QQPUSH_CHANNEL 生效。",
+  "//openid": "group_openid 在开放平台面板看不到：把机器人拉进群、在群里 @ 它，服务会自动写入这里，无需手填",
+  "groups": {
+    "运维告警": 123456789,
+    "开发群": 987654321
+  },
+  "group_openids": {},
+  "default_targets": ["运维告警"]
+}

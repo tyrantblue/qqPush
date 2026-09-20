@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+.uv-cache/
+.git/
+.gitignore
+.env
+data/groups.json
+data/*.ndjson
+tests/
+.ruff_cache/
+.pytest_cache/
+dist/
+*.egg-info/
+napcat/
+ntqq/
